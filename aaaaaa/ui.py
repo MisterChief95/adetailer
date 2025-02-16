@@ -12,6 +12,9 @@ from aaaaaa.conditional import InputAccordion
 from adetailer import ADETAILER, __version__
 from adetailer.args import ALL_ARGS, MASK_MERGE_INVERT
 from controlnet_ext import controlnet_exists, controlnet_type, get_cn_models
+from modules.sd_models import checkpoint_tiles, list_models
+from modules.shared_items import refresh_vae_list, sd_vae_items
+from modules.ui_common import create_refresh_button
 
 if controlnet_type == "forge":
     from lib_controlnet import global_state
@@ -528,13 +531,25 @@ def inpainting(w: Widgets, n: int, is_img2img: bool, webui_info: WebuiInfo):  # 
 
                 ckpts = ["Use same checkpoint", *webui_info.checkpoints_list]
 
-                w.ad_checkpoint = gr.Dropdown(
-                    label="ADetailer checkpoint" + suffix(n),
-                    choices=ckpts,
-                    value=ckpts[0],
-                    visible=True,
-                    elem_id=eid("ad_checkpoint"),
-                )
+                with gr.Row():
+                    w.ad_checkpoint = gr.Dropdown(
+                        label="ADetailer checkpoint" + suffix(n),
+                        choices=ckpts,
+                        value=ckpts[0],
+                        visible=True,
+                        elem_id=eid("ad_checkpoint"),
+                    )
+                    create_refresh_button(
+                        refresh_component=w.ad_checkpoint,
+                        refresh_method=list_models,
+                        refreshed_args=lambda: {
+                            "choices": [
+                                "Use same checkpoint",
+                                *checkpoint_tiles(use_short=True),
+                            ]
+                        },
+                        elem_id="ad_checkpoint_refresh",
+                    )
 
             with gr.Column(variant="compact"):
                 w.ad_use_vae = gr.Checkbox(
@@ -546,13 +561,22 @@ def inpainting(w: Widgets, n: int, is_img2img: bool, webui_info: WebuiInfo):  # 
 
                 vaes = ["Use same VAE", *webui_info.vae_list]
 
-                w.ad_vae = gr.Dropdown(
-                    label="ADetailer VAE" + suffix(n),
-                    choices=vaes,
-                    value=vaes[0],
-                    visible=True,
-                    elem_id=eid("ad_vae"),
-                )
+                with gr.Row():
+                    w.ad_vae = gr.Dropdown(
+                        label="ADetailer VAE" + suffix(n),
+                        choices=vaes,
+                        value=vaes[0],
+                        visible=True,
+                        elem_id=eid("ad_vae"),
+                    )
+                    create_refresh_button(
+                        refresh_component=w.ad_vae,
+                        refresh_method=refresh_vae_list,
+                        refreshed_args=lambda: {
+                            "choices": ["Use same VAE", *sd_vae_items()]
+                        },
+                        elem_id="ad_vae_refresh",
+                    )
 
         with gr.Row(), gr.Column(variant="compact"):
             w.ad_use_sampler = gr.Checkbox(
