@@ -11,12 +11,16 @@ from typing import Any, Generic, Optional, TypeVar
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
 from rich import print  # noqa: A004  Shadowing built-in 'print'
+import torch
 from torchvision.transforms.functional import to_pil_image
+
+from modules import paths
 
 REPO_ID = "Bingsu/adetailer"
 
 T = TypeVar("T", int, float)
 
+adetailer_dir = Path(paths.models_path, "adetailer")
 
 @dataclass
 class PredictOutput(Generic[T]):
@@ -29,15 +33,15 @@ class PredictOutput(Generic[T]):
 def hf_download(file: str, repo_id: str = REPO_ID, check_remote: bool = True) -> str:
     if check_remote:
         with suppress(Exception):
-            return hf_hub_download(repo_id, file, etag_timeout=1)
+            return hf_hub_download(repo_id, file, local_dir=adetailer_dir, etag_timeout=1)
 
         with suppress(Exception):
             return hf_hub_download(
-                repo_id, file, etag_timeout=1, endpoint="https://hf-mirror.com"
+                repo_id, file, local_dir=adetailer_dir, etag_timeout=1, endpoint="https://hf-mirror.com"
             )
 
     with suppress(Exception):
-        return hf_hub_download(repo_id, file, local_files_only=True)
+        return hf_hub_download(repo_id, file, local_dir=adetailer_dir, local_files_only=True)
 
     msg = f"[-] ADetailer: Failed to load model {file!r} from huggingface"
     print(msg)
@@ -53,7 +57,7 @@ def safe_mkdir(path: str | os.PathLike[str]) -> None:
 def scan_model_dir(path: Path) -> list[Path]:
     if not path.is_dir():
         return []
-    return [p for p in path.rglob("*") if p.is_file() and p.suffix == ".pt"]
+    return [p for p in path.rglob("*") if p.is_file() and p.suffix == ".pt"  or p.suffix == ".safetensors"]
 
 
 def download_models(*names: str, check_remote: bool = True) -> dict[str, str]:
@@ -114,7 +118,6 @@ def get_models(
         if path.name in models:
             continue
         models[path.name] = str(path)
-
     return models
 
 

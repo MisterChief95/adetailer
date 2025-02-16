@@ -134,6 +134,8 @@ def adui(
         label=ADETAILER,
         visible=True,
     ) as ad_enable:
+        ad_hires_only = gr.Checkbox(label="HiRes.Fix Only")
+
         with gr.Row():
             with gr.Column(scale=8):
                 ad_skip_img2img = gr.Checkbox(
@@ -165,7 +167,7 @@ def adui(
                 infotext_fields.extend(infofields)
 
     # components: [bool, bool, dict, dict, ...]
-    components = [ad_enable, ad_skip_img2img, *states]
+    components = [ad_enable, ad_hires_only, ad_skip_img2img, *states]
     return components, infotext_fields
 
 
