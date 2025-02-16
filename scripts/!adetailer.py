@@ -49,7 +49,7 @@ from adetailer.args import (
     InpaintBBoxMatchMode,
     SkipImg2ImgOrig,
 )
-from adetailer.common import PredictOutput, ensure_pil_image, safe_mkdir
+from adetailer.common import adetailer_dir, PredictOutput, ensure_pil_image, safe_mkdir
 from adetailer.mask import (
     filter_by_ratio,
     filter_k_by,
@@ -84,7 +84,6 @@ if TYPE_CHECKING:
 PARAMS_TXT = "params.txt"
 
 no_huggingface = getattr(cmd_opts, "ad_no_huggingface", False)
-adetailer_dir = Path(paths.models_path, "adetailer")
 safe_mkdir(adetailer_dir)
 
 extra_models_dirs = shared.opts.data.get("ad_extra_models_dir", "")
@@ -774,10 +773,15 @@ class AfterDetailerScript(scripts.Script):
 
         if is_img2img_inpaint(p) and is_all_black(self.get_image_mask(p)):
             p._ad_disabled = True
-            msg = (
+            print(
                 "[-] ADetailer: img2img inpainting with no mask -- adetailer disabled."
             )
-            print(msg)
+            return
+        
+        ad_hires_only = args_[1] if isinstance(args_[1], bool) else False
+        if hasattr(p, "enable_hr") and not p.enable_hr and ad_hires_only:
+            p._ad_disabled = True
+            print("[-] ADetailer: HiRes Only mode is enabled -- adetailer disabled.")
             return
 
         if not self.is_ad_enabled(*args_):

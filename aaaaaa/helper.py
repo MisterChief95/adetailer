@@ -30,7 +30,18 @@ PT = Union[StableDiffusionProcessingTxt2Img, StableDiffusionProcessingImg2Img]
 def change_torch_load():
     orig = torch.load
     try:
-        torch.load = safe.unsafe_torch_load
+        # Add the DetectionModel to safe globals
+        torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+        
+        # Create a custom loader function
+        def custom_load(*args, **kwargs):
+            # Force weights_only to False if not explicitly set
+            if 'weights_only' not in kwargs:
+                kwargs['weights_only'] = False
+            return orig(*args, **kwargs)
+        
+        # Replace torch.load with our custom loader
+        torch.load = custom_load
         yield
     finally:
         torch.load = orig
