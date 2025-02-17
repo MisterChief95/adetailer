@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from itertools import chain
 from types import SimpleNamespace
@@ -9,9 +9,12 @@ from typing import Any
 import gradio as gr
 
 from aaaaaa.conditional import InputAccordion
+from adetailer.common import get_models, adetailer_dir
 from adetailer import ADETAILER, __version__
 from adetailer.args import ALL_ARGS, MASK_MERGE_INVERT
 from controlnet_ext import controlnet_exists, controlnet_type, get_cn_models
+
+import modules.shared as shared
 from modules.sd_models import checkpoint_tiles, list_models
 from modules.shared_items import refresh_vae_list, sd_vae_items
 from modules.ui_common import create_refresh_button
@@ -174,15 +177,19 @@ def adui(
     return components, infotext_fields
 
 
-def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
-    w = Widgets()
-    eid = partial(elem_id, n=n, is_img2img=is_img2img)
-
-    model_choices = (
+def get_model_choices(webui_info: WebuiInfo, n: int) -> list[str]:
+    return (
         [*webui_info.ad_model_list, "None"]
         if n == 0
         else ["None", *webui_info.ad_model_list]
     )
+
+
+def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
+    w = Widgets()
+    eid = partial(elem_id, n=n, is_img2img=is_img2img)
+
+    model_choices = get_model_choices(webui_info, n)
 
     with gr.Group():
         with gr.Row(variant="compact"):
@@ -193,6 +200,8 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 elem_id=eid("ad_tab_enable"),
             )
 
+        ui_elem_id = eid("ad_model")
+
         with gr.Row():
             w.ad_model = gr.Dropdown(
                 label="ADetailer detector" + suffix(n),
@@ -200,8 +209,31 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 value=model_choices[0],
                 visible=True,
                 type="value",
-                elem_id=eid("ad_model"),
+                elem_id=ui_elem_id,
                 info="Select a model to use for detection.",
+            )
+
+            def refresh_model_list():
+                nonlocal model_choices, webui_info
+
+                extra_models_dirs = shared.opts.data.get("ad_extra_models_dir", "")
+                model_mapping = get_models(
+                    adetailer_dir,
+                    *extra_models_dirs.split("|"),
+                    huggingface=False,
+                )
+
+                webui_info = replace(webui_info, ad_model_list = model_mapping.keys())
+                model_choices = get_model_choices(webui_info, n) 
+
+            create_refresh_button(
+                refresh_component=w.ad_model,
+                refresh_method=refresh_model_list,
+                refreshed_args=lambda: {
+                    "choices": [*model_choices],
+                    "value": model_choices[0],
+                },
+                elem_id=f"{ui_elem_id}_refresh",
             )
 
         with gr.Row():

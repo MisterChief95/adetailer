@@ -11,7 +11,6 @@ from typing import Any, Generic, Optional, TypeVar
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
 from rich import print  # noqa: A004  Shadowing built-in 'print'
-import torch
 from torchvision.transforms.functional import to_pil_image
 
 from modules import paths
@@ -60,7 +59,7 @@ def scan_model_dir(path: Path) -> list[Path]:
     return [p for p in path.rglob("*") if p.is_file() and p.suffix == ".pt"  or p.suffix == ".safetensors"]
 
 
-def download_models(*names: str, check_remote: bool = True) -> dict[str, str]:
+def download_models(*names: str) -> dict[str, str]:
     models = OrderedDict()
     with ThreadPoolExecutor() as executor:
         for name in names:
@@ -69,13 +68,11 @@ def download_models(*names: str, check_remote: bool = True) -> dict[str, str]:
                     hf_download,
                     name,
                     repo_id="Bingsu/yolo-world-mirror",
-                    check_remote=check_remote,
                 )
             else:
                 models[name] = executor.submit(
                     hf_download,
                     name,
-                    check_remote=check_remote,
                 )
     return {name: future.result() for name, future in models.items()}
 
@@ -99,7 +96,9 @@ def get_models(
         "person_yolov8s-seg.pt",
         "yolov8x-worldv2.pt",
     ]
-    models.update(download_models(*to_download, check_remote=huggingface))
+
+    if huggingface:
+        models.update(download_models(*to_download))
 
     models.update(
         {
